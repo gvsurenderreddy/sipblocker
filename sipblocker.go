@@ -15,8 +15,8 @@ import (
 )
 
 const (
-  _DAEMON_NAME  = "sipblocker"
-  _DAEMON_DESC  = "Phreakers blocker"
+  	_DAEMON_NAME  = "sipblocker"
+  	_DAEMON_DESC  = "Phreakers blocker"
 	_LT		= "\r\n"            // packet line separator
 	_KEY_VAL_TERM = ":"               // header value separator
 	_READ_BUF     = 512               // buffer size for socket reader
@@ -26,7 +26,7 @@ const (
 var (
 	M = make(map[string][]map[string]string)
 	_PT_BYTES = []byte(_LT + _LT) // packet separator
-  stdlog, errlog *log.Logger
+  	errlog *log.Logger
 	AMIhost, AMIuser, AMIpassword, AMIport string
 	CALLCENTERLOGPATH = ""
 )
@@ -63,8 +63,8 @@ type Service struct {
 }
 
 func (service *Service) Manage() (string, error) {
-    usage := "Usage: myservice install | remove | start | stop | status\nconfig 'asterisk_config.json' should be placed in /etc/asterisk"
-    if len(os.Args) > 1 {
+	usage := "Usage: myservice install | remove | start | stop | status\nconfig 'asterisk_config.json' should be placed in /etc/asterisk"
+	if len(os.Args) > 1 {
 		command := os.Args[1]
 		switch command {
 		case "install":
@@ -80,9 +80,9 @@ func (service *Service) Manage() (string, error) {
 		default:
 	    		return usage, nil
 		}
-    }
+    	}
 	eventGet()
-    return usage, nil
+    	return usage, nil
 }
 
 func eventGet() {
