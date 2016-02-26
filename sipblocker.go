@@ -235,3 +235,4 @@ func LoggerMap(m map[string]string) {
  	log.SetOutput(f)
   	log.Print(m)
 }
+
