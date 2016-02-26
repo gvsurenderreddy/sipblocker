@@ -1,0 +1,17 @@
+{
+    "mail" : {
+        "Server" : "mail.example.go",
+        "Port" : "25",
+        "Domain" : "example.go",
+        "Mailto" : "user"
+    },
+    "sipblockerami" : {
+        "RemotePort" : "5038",
+        "RemoteHost" : "asterisk",
+        "Username" : "asterisk",
+        "Password" : "password"
+    },
+    "callcentercorelog" : {
+        "path" : "/var/log/callcenter_log"
+    }
+}
