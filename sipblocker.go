@@ -130,6 +130,22 @@ func eventGet() {
 	}
 }
 
+/*
+<------>} elsif ($E->{'Event'} eq 'FailedACL') {
+<------><------>FailedACL($E)
+<------>} elsif ($E->{'Event'} eq 'InvalidAccountID') {
+<------><------>InvalidAccountID($E)
+<------>} elsif ($E->{'Event'} eq 'UnexpectedAddress') {
+<------><------>UnexpectedAddress($E)
+<------>} elsif ($E->{'Event'} eq 'InvalidPassword') {
+<------><------>InvalidPassword($E)
+<------>} elsif ($E->{'Event'} eq 'ChallengeResponseFailed') {
+<------><------>ChallengeResponseFailed($E)
+<------>} elsif ($E->{'Event'} eq 'RequestBadFormat') {
+<------><------>RequestBadFormat($E)
+<------>}
+*/
+
 func eventHandler(E map[string]string) {
 	if (E["Event"] == "FailedACL") {
 		FailedACL(E)
@@ -139,6 +155,8 @@ func eventHandler(E map[string]string) {
 		UnexpectedAddress(E)
 	} else if (E["Event"] == "InvalidPassword") {
 		InvalidPassword(E)
+	} else if (E["Event"] == "ChallengeResponseFailed") {
+		ChallengeResponseFailed(E)
 	} else if (E["Event"] == "RequestBadFormat") {
 		RequestBadFormat(E)
 	}
@@ -157,7 +175,6 @@ func FailedACL(e map[string]string) {
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
-
 func InvalidAccountID(e map[string]string) {
 	LoggerMap(e)
 	simpleMailNotify.Notify(e["Event"], "Text", M)
@@ -173,6 +190,11 @@ func InvalidPassword(e map[string]string) {
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := e["Event"] + _LT + e["AccountID"] + _LT + raddr
 	simpleMailNotify.Notify(e["Event"], msg, M)
+}
+
+func ChallengeResponseFailed(e map[string]string) {
+	LoggerMap(e)
+	simpleMailNotify.Notify(e["Event"], "Text", M)
 }
 
 func RequestBadFormat(e map[string]string) {
