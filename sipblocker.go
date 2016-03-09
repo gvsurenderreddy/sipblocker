@@ -13,6 +13,8 @@ import (
 	"flag"
 	"strings"
 	"os/exec"
+	"database/sql"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -25,11 +27,12 @@ const (
 )
 
 var (
-	M = make(map[string][]map[string]string)
+	M = make(map[string][]map[string]string) //MAIL MAP
+	DBI =  make(map[string][]map[string]string) //DB CONNECT MAP
 	_PT_BYTES = []byte(_LT + _LT) // packet separator
   	errlog *log.Logger
 	AMIhost, AMIuser, AMIpassword, AMIport string
-	CALLCENTERLOGPATH = ""
+	LOGPATH = ""
 )
 
 
@@ -37,6 +40,7 @@ type Config struct {
 	SIPBlockerAmi SIPBlockerAmi
 	Mail Mail
 	CallcenterLog CallcenterLog
+	Pg Pg
 }
 
 type SIPBlockerAmi struct {
@@ -44,6 +48,14 @@ type SIPBlockerAmi struct {
 	RemoteHost string
 	Username   string
 	Password   string
+}
+
+type Pg struct {
+	DBPort string
+	DBHost string
+	DBUser string
+	DBPass string
+	DBName string
 }
 
 type Mail struct {
@@ -131,10 +143,6 @@ func eventGet() {
 	}
 }
 
-/*
-
-*/
-
 func eventHandler(E map[string]string) {
 	if (E["Event"] == "FailedACL") {
 		FailedACL(E)
@@ -157,11 +165,18 @@ func RAddrGet(a string) (string) {
 	return raddr[2]
 }
 
+//iptables and BD test
 func FailedACL(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := e["Event"] + _LT + e["AccountID"] + _LT + raddr + _LT + e["ACLName"] + _LT + e["Service"]
-	exec.Command("iptables -I fail2ban-asterisk 1 -s " + raddr + " -j DROP") //test
+	blk, err := exec.Command("iptables", "-I", "fail2ban-asterisk", "1", "-s", raddr, "-j", "DROP").Output() //test
+	if err != nil {
+		LoggerErr(err)
+	} else {
+		LoggerByte(blk)
+	}
+	sqlPut("INSERT INTO fail2ban_temp (ip, num, cause) VALUES ('" + raddr + "', '" + e["AccountID"] + "', 'Device does not match ACL')")
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -175,11 +190,18 @@ func UnexpectedAddress(e map[string]string) {
 	simpleMailNotify.Notify(e["Event"], "Text", M)
 }
 
+//iptables and BD test
 func InvalidPassword(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := e["Event"] + _LT + e["AccountID"] + _LT + raddr
-	exec.Command("iptables -I fail2ban-asterisk 1 -s " + raddr + " -j DROP") //test
+	blk, err := exec.Command("iptables", "-I", "fail2ban-asterisk", "1", "-s", raddr, "-j", "DROP").Output() //test
+	if err != nil {
+		LoggerErr(err)
+	} else {
+		LoggerByte(blk)
+	}
+	sqlPut("INSERT INTO fail2ban_temp (ip, num, cause) VALUES ('" + raddr + "', '" + e["AccountID"] + "', 'Wrong password')")
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -213,13 +235,41 @@ func init() {
 	flag.StringVar(&AMIuser, "user", conf.SIPBlockerAmi.Username, "AMI user")
 	flag.StringVar(&AMIpassword, "password", conf.SIPBlockerAmi.Password, "AMI secret")
 	flag.Parse()
-	CALLCENTERLOGPATH = conf.CallcenterLog.Path
+	LOGPATH = conf.CallcenterLog.Path
+
 	var m = make(map[string]string)
 	m["Server"] = conf.Mail.Server
 	m["Port"] = conf.Mail.Port
 	m["Domain"] = conf.Mail.Domain
 	m["Mailto"] = conf.Mail.Mailto
 	M["M"] = append(M["M"], m)
+
+	var d = make(map[string]string)
+	d["dbPass"] = conf.Pg.DBPass
+	d["dbName"] = conf.Pg.DBName
+	d["dbHost"] = conf.Pg.DBHost
+	d["dbPort"] = conf.Pg.DBPort
+	d["dbUser"] = conf.Pg.DBUser
+	DBI["PG"] = append(DBI["PG"], d)
+}
+
+func sqlPut(query string) {
+	dbinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		DBI["PG"][0]["dbHost"],
+		DBI["PG"][0]["dbPort"],
+		DBI["PG"][0]["dbUser"],
+		DBI["PG"][0]["dbPass"],
+		DBI["PG"][0]["dbName"])
+	db, err := sql.Open("postgres", dbinfo)
+	if (err != nil) {
+		fmt.Println(err)
+	}
+	result, err := db.Exec(query)
+	if err != nil {
+		LoggerErr(err)
+	}
+	result.LastInsertId()
+	db.Close()
 }
 
 func main() {
@@ -238,14 +288,25 @@ func main() {
 }
 
 func LoggerString(s string) {
-	f, _ := os.OpenFile(CALLCENTERLOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(f)
 	log.Print(s)
 }
 
 func LoggerMap(m map[string]string) {
-	f, _ := os.OpenFile(CALLCENTERLOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
  	log.SetOutput(f)
   	log.Print(m)
 }
 
+func LoggerErr(s error) {
+	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	log.SetOutput(f)
+	log.Print(s)
+}
+
+func LoggerByte(s []byte) {
+	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	log.SetOutput(f)
+	log.Print(s)
+}
