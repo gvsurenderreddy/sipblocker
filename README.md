@@ -1,8 +1,7 @@
 # SIPblocker-daemon
 GO Asterisk AMI Event SipBlocker Daemon 
 
-Возможно использовать как замену fail2ban
-После сборки обработать напильником
+Возможно использовать как замену fail2ban. После сборки обработать напильником!
 
 Can be used as a substitute for fail2ban
 
