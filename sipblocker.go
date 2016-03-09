@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"flag"
 	"strings"
+	"os/exec"
 )
 
 const (
@@ -131,19 +132,7 @@ func eventGet() {
 }
 
 /*
-<------>} elsif ($E->{'Event'} eq 'FailedACL') {
-<------><------>FailedACL($E)
-<------>} elsif ($E->{'Event'} eq 'InvalidAccountID') {
-<------><------>InvalidAccountID($E)
-<------>} elsif ($E->{'Event'} eq 'UnexpectedAddress') {
-<------><------>UnexpectedAddress($E)
-<------>} elsif ($E->{'Event'} eq 'InvalidPassword') {
-<------><------>InvalidPassword($E)
-<------>} elsif ($E->{'Event'} eq 'ChallengeResponseFailed') {
-<------><------>ChallengeResponseFailed($E)
-<------>} elsif ($E->{'Event'} eq 'RequestBadFormat') {
-<------><------>RequestBadFormat($E)
-<------>}
+
 */
 
 func eventHandler(E map[string]string) {
@@ -172,6 +161,7 @@ func FailedACL(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := e["Event"] + _LT + e["AccountID"] + _LT + raddr + _LT + e["ACLName"] + _LT + e["Service"]
+	exec.Command("iptables -I fail2ban-asterisk 1 -s " + raddr + " -j DROP") //test
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -189,6 +179,7 @@ func InvalidPassword(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := e["Event"] + _LT + e["AccountID"] + _LT + raddr
+	exec.Command("iptables -I fail2ban-asterisk 1 -s " + raddr + " -j DROP") //test
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -199,9 +190,9 @@ func ChallengeResponseFailed(e map[string]string) {
 
 func RequestBadFormat(e map[string]string) {
 	LoggerMap(e)
-	raddr := RAddrGet(e["RemoteAddress"])
-	msg := e["Event"] + _LT + e["AccountID"] + _LT + e["RequestType"] + _LT + e["Severity"] +  _LT + raddr
-	simpleMailNotify.Notify(e["Event"], msg, M)
+//	raddr := RAddrGet(e["RemoteAddress"])
+//	msg := e["Event"] + _LT + e["AccountID"] + _LT + e["RequestType"] + _LT + e["Severity"] +  _LT + raddr
+//	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
 func init() {
