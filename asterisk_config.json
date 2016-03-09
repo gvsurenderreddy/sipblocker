@@ -11,6 +11,13 @@
         "Username" : "asterisk",
         "Password" : "password"
     },
+    "pg" : {
+        "DBPort" : "5432",
+        "DBHost" : "db.example.go",
+        "DBUser" : "asterisk",
+        "DBPass" : "asterisk",
+        "DBName" : "asterisk"
+    },
     "callcentercorelog" : {
         "path" : "/var/log/callcenter_log"
     }
