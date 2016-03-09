@@ -9,7 +9,7 @@ Can be used as a substitute for fail2ban
 ```
 Dependency Installed: 
     iptables
-    postrgesql on any host
+    postrges on any host
 
 ```
 
