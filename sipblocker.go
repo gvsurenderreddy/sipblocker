@@ -165,6 +165,7 @@ func RAddrGet(a string) (string) {
 	return raddr[2]
 }
 
+
 //iptables and BD test
 func FailedACL(e map[string]string) {
 	LoggerMap(e)
