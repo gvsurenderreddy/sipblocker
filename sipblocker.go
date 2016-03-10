@@ -169,7 +169,7 @@ func RAddrGet(a string) (string) {
 func FailedACL(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := e["Event"] + _LT + e["AccountID"] + _LT + raddr + _LT + e["ACLName"] + _LT + e["Service"]
+	msg := e["Event"] + _LT + "Number " + e["AccountID"] + _LT + "IP Address " + raddr + _LT + "ACL Name " + e["ACLName"] + _LT + "Proto " + e["Service"]
 	blk, err := exec.Command("iptables", "-I", "fail2ban-asterisk", "1", "-s", raddr, "-j", "DROP").Output() //test
 	if err != nil {
 		LoggerErr(err)
@@ -194,7 +194,7 @@ func UnexpectedAddress(e map[string]string) {
 func InvalidPassword(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := e["Event"] + _LT + e["AccountID"] + _LT + raddr
+	msg := e["Event"] + _LT + "Number " + e["AccountID"] + _LT + "IP Address " + raddr
 	blk, err := exec.Command("iptables", "-I", "fail2ban-asterisk", "1", "-s", raddr, "-j", "DROP").Output() //test
 	if err != nil {
 		LoggerErr(err)
