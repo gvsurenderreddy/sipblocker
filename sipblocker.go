@@ -1,27 +1,30 @@
 package main
 
 import (
-	"github.com/yosh0/simpleMailNotify"
-	"github.com/takama/daemon"
 	"os"
 	"fmt"
-	"encoding/json"
 	"log"
 	"net"
+	"flag"
 	"bufio"
 	"bytes"
-	"flag"
 	"strings"
+	"strconv"
 	"os/exec"
 	"database/sql"
-	_ "github.com/lib/pq"
+	"encoding/json"
+	_"github.com/lib/pq"
+	"github.com/takama/daemon"
+	"github.com/sdidyk/mtproto"
+	"github.com/yosh0/simpleMailNotify"
+
 )
 
 const (
-  	_DAEMON_NAME  = "sipblocker"
-  	_DAEMON_DESC  = "Phreakers blocker"
+  	_DN  = "sipblocker"
+  	_DD  = "Phreakers blocker"
 	_LT		= "\r\n"            // packet line separator
-	_KEY_VAL_TERM = ":"               // header value separator
+	_KVT = ":"               // header value separator
 	_READ_BUF     = 512               // buffer size for socket reader
 	_CMD_END      = "--END COMMAND--" // Asterisk command data end
 )
@@ -33,6 +36,8 @@ var (
   	errlog *log.Logger
 	AMIhost, AMIuser, AMIpassword, AMIport string
 	LOGPATH = ""
+	TG string
+	TGPATH string
 )
 
 
@@ -41,6 +46,12 @@ type Config struct {
 	Mail Mail
 	CallcenterLog CallcenterLog
 	Pg Pg
+	Tg Tg
+}
+
+type Tg struct {
+	Rcp []string
+	Path string
 }
 
 type SIPBlockerAmi struct {
@@ -99,7 +110,12 @@ func (service *Service) Manage() (string, error) {
 }
 
 func eventGet() {
-	conn, _ := net.Dial("tcp", AMIhost + ":" + AMIport)
+	conn, err := net.Dial("tcp", AMIhost + ":" + AMIport)
+	if err != nil {
+		LoggerString("Connection to host "+AMIhost+" error")
+		NotifyTG("Connection to host "+AMIhost+" error")
+		os.Exit(0)
+	}
 	fmt.Fprintf(conn, "Action: Login\r\n")
 	fmt.Fprintf(conn, "Username:" + AMIuser + "\r\n")
 	fmt.Fprintf(conn, "Secret:" + AMIpassword + "\r\n\r\n")
@@ -127,7 +143,7 @@ func eventGet() {
 				if len(line) == 0 {
 					continue
 				}
-				kvl := bytes.Split(line, []byte(_KEY_VAL_TERM))
+				kvl := bytes.Split(line, []byte(_KVT))
 				if len(kvl) == 1 {
 					if string(line) != _CMD_END {
 						m["CmdData"] += string(line)
@@ -252,6 +268,34 @@ func init() {
 	d["dbPort"] = conf.Pg.DBPort
 	d["dbUser"] = conf.Pg.DBUser
 	DBI["PG"] = append(DBI["PG"], d)
+
+	TG = conf.Tg.Rcp
+	TGPATH = conf.Tg.Path
+	NotifyTG("Start/Restart " + _DN + " " + _DD)
+}
+
+func NotifyTG(tg_msg string) {
+	LoggerString(tg_msg)
+	m, err := mtproto.NewMTProto(TGPATH)
+	if err != nil {
+		LoggerString("Create failed")
+		LoggerErr(err)
+	}
+	err = m.Connect()
+	if err != nil {
+		LoggerString("Connect failed")
+		LoggerErr(err)
+	}
+	for rcps, each := range TG {
+		rcp := string(rcps)
+		e := string(each)
+		id, err := strconv.ParseInt(each, 10, 32)
+		LoggerString("Send TG_MSG to " + e + " " + rcp)
+		err = m.SendMsg(int32(id), tg_msg)
+		if (err != nil) {
+			LoggerErr(err)
+		}
+	}
 }
 
 func sqlPut(query string) {
@@ -262,8 +306,11 @@ func sqlPut(query string) {
 		DBI["PG"][0]["dbPass"],
 		DBI["PG"][0]["dbName"])
 	db, err := sql.Open("postgres", dbinfo)
+	err = db.Ping()
 	if (err != nil) {
-		fmt.Println(err)
+		LoggerString(err.Error())
+		NotifyTG(err.Error())
+		os.Exit(0)
 	}
 	result, err := db.Exec(query)
 	if err != nil {
@@ -274,7 +321,7 @@ func sqlPut(query string) {
 }
 
 func main() {
-	srv, err := daemon.New(_DAEMON_NAME, _DAEMON_DESC)
+	srv, err := daemon.New(_DN, _DD)
     	if err != nil {
 		errlog.Println("Error 1: ", err)
 		os.Exit(1)
