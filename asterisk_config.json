@@ -18,7 +18,12 @@
         "DBPass" : "asterisk",
         "DBName" : "asterisk"
     },
-    "callcentercorelog" : {
-        "path" : "/var/log/callcenter_log"
+    "logdir" : {
+        "path" : "/var/log/asterisk/"
+    },
+    "Ban" : {
+        "Command" : "command",
+        "Chain" : "chain",
+        "Table" : "table"
     }
 }

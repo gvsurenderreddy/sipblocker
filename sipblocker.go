@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"flag"
 	"bufio"
 	"bytes"
 	"strings"
@@ -21,12 +20,14 @@ import (
 )
 
 const (
-  	_DN  = "sipblocker"
-  	_DD  = "Phreakers blocker"
+  	_DN  		= "sipblocker"
+  	_DD  		= "Phreakers blocker"
 	_LT		= "\r\n"            // packet line separator
-	_KVT = ":"               // header value separator
-	_READ_BUF     = 512               // buffer size for socket reader
-	_CMD_END      = "--END COMMAND--" // Asterisk command data end
+	_KVT 		= ":"               // header value separator
+	_READ_BUF     	= 512               // buffer size for socket reader
+	_CMD_END      	= "--END COMMAND--" // Asterisk command data end
+	_CACL 		= "Device does not match ACL" // cause acl
+	_CPASS 		= "Wrong password" // cause wrong pass
 )
 
 var (
@@ -34,19 +35,32 @@ var (
 	DBI =  make(map[string][]map[string]string) //DB CONNECT MAP
 	_PT_BYTES = []byte(_LT + _LT) // packet separator
   	errlog *log.Logger
-	AMIhost, AMIuser, AMIpassword, AMIport string
+	AMIhost, AMIuser, AMIpass, AMIport string
+	DBPass, DBName, DBHost, DBPort, DBUser, DBSSL string
 	LOGPATH = ""
-	TG string
+	TG []string
 	TGPATH string
+	BANCHAIN, BANTABLE, BANCOMMAND string
 )
 
 
 type Config struct {
-	SIPBlockerAmi SIPBlockerAmi
-	Mail Mail
-	CallcenterLog CallcenterLog
 	Pg Pg
 	Tg Tg
+	Ban Ban
+	Mail Mail
+	LogDir LogDir
+	SIPBlockerAmi SIPBlockerAmi
+}
+
+type LogDir struct {
+	Path string
+}
+
+type Ban struct {
+	Chain string
+	Table string
+	Command string
 }
 
 type Tg struct {
@@ -67,6 +81,7 @@ type Pg struct {
 	DBUser string
 	DBPass string
 	DBName string
+	DBSSL string
 }
 
 type Mail struct {
@@ -110,15 +125,15 @@ func (service *Service) Manage() (string, error) {
 }
 
 func eventGet() {
-	conn, err := net.Dial("tcp", AMIhost + ":" + AMIport)
+	conn, err := net.Dial("tcp", AMIhost+":"+AMIport)
 	if err != nil {
 		LoggerString("Connection to host "+AMIhost+" error")
 		NotifyTG("Connection to host "+AMIhost+" error")
 		os.Exit(0)
 	}
-	fmt.Fprintf(conn, "Action: Login\r\n")
-	fmt.Fprintf(conn, "Username:" + AMIuser + "\r\n")
-	fmt.Fprintf(conn, "Secret:" + AMIpassword + "\r\n\r\n")
+	fmt.Fprintf(conn, "Action: Login"+_LT)
+	fmt.Fprintf(conn, "Username: "+AMIuser+_LT)
+	fmt.Fprintf(conn, "Secret: "+AMIpass+_LT+_LT)
 	r := bufio.NewReader(conn)
 	pbuf := bytes.NewBufferString("")
 	buf := make([]byte, _READ_BUF)
@@ -143,7 +158,7 @@ func eventGet() {
 				if len(line) == 0 {
 					continue
 				}
-				kvl := bytes.Split(line, []byte(_KVT))
+				kvl := bytes.Split(line, []byte(_KVT+" "))
 				if len(kvl) == 1 {
 					if string(line) != _CMD_END {
 						m["CmdData"] += string(line)
@@ -182,19 +197,20 @@ func RAddrGet(a string) (string) {
 	return raddr[2]
 }
 
-
-//iptables and BD test
 func FailedACL(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := e["Event"] + _LT + "Number " + e["AccountID"] + _LT + "IP Address " + raddr + _LT + "ACL Name " + e["ACLName"] + _LT + "Proto " + e["Service"]
-	blk, err := exec.Command("iptables", "-I", "fail2ban-asterisk", "1", "-s", raddr, "-j", "DROP").Output() //test
+	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s %s ACL Name %s %s Proto %s",
+		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
+	blk, err := exec.Command(BANCOMMAND, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
 	if err != nil {
 		LoggerErr(err)
 	} else {
 		LoggerByte(blk)
 	}
-	sqlPut("INSERT INTO fail2ban_temp (ip, num, cause) VALUES ('" + raddr + "', '" + e["AccountID"] + "', 'Device does not match ACL')")
+	query := fmt.Sprintf("INSERT INTO %s (ip, num, cause) VALUES ('%s', '%s', '%s')",
+		BANTABLE, raddr, e["AccountID"], _CACL)
+	sqlPut(query)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -208,18 +224,20 @@ func UnexpectedAddress(e map[string]string) {
 	simpleMailNotify.Notify(e["Event"], "Text", M)
 }
 
-//iptables and BD test
 func InvalidPassword(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := e["Event"] + _LT + "Number " + e["AccountID"] + _LT + "IP Address " + raddr
-	blk, err := exec.Command("iptables", "-I", "fail2ban-asterisk", "1", "-s", raddr, "-j", "DROP").Output() //test
+	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
+		e["Event"], _LT, e["AccountID"], _LT, raddr)
+	blk, err := exec.Command(BANCOMMAND, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
 	if err != nil {
 		LoggerErr(err)
 	} else {
 		LoggerByte(blk)
 	}
-	sqlPut("INSERT INTO fail2ban_temp (ip, num, cause) VALUES ('" + raddr + "', '" + e["AccountID"] + "', 'Wrong password')")
+	query := fmt.Sprintf("INSERT INTO %s (ip, num, cause) VALUES ('%s', '%s', '%s')",
+		BANTABLE, raddr, e["AccountID"], _CPASS)
+	sqlPut(query)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -248,12 +266,16 @@ func init() {
 		fmt.Println("Error: ", err)
 		os.Exit(88)
 	}
-	flag.StringVar(&AMIport, "port", conf.SIPBlockerAmi.RemotePort, "AMI port")
-	flag.StringVar(&AMIhost, "host", conf.SIPBlockerAmi.RemoteHost, "AMI host")
-	flag.StringVar(&AMIuser, "user", conf.SIPBlockerAmi.Username, "AMI user")
-	flag.StringVar(&AMIpassword, "password", conf.SIPBlockerAmi.Password, "AMI secret")
-	flag.Parse()
-	LOGPATH = conf.CallcenterLog.Path
+	AMIport = conf.SIPBlockerAmi.RemotePort
+	AMIhost = conf.SIPBlockerAmi.RemoteHost
+	AMIuser = conf.SIPBlockerAmi.Username
+	AMIpass = conf.SIPBlockerAmi.Password
+
+	LOGPATH = conf.LogDir.Path
+
+	BANCHAIN = conf.Ban.Chain
+	BANTABLE = conf.Ban.Table
+	BANCOMMAND = conf.Ban.Command
 
 	var m = make(map[string]string)
 	m["Server"] = conf.Mail.Server
@@ -261,6 +283,13 @@ func init() {
 	m["Domain"] = conf.Mail.Domain
 	m["Mailto"] = conf.Mail.Mailto
 	M["M"] = append(M["M"], m)
+
+	DBPass = conf.Pg.DBPass
+	DBName = conf.Pg.DBName
+	DBHost = conf.Pg.DBHost
+	DBPort = conf.Pg.DBPort
+	DBUser = conf.Pg.DBUser
+	DBSSL = conf.Pg.DBSSL
 
 	var d = make(map[string]string)
 	d["dbPass"] = conf.Pg.DBPass
@@ -300,12 +329,8 @@ func NotifyTG(tg_msg string) {
 }
 
 func sqlPut(query string) {
-	dbinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		DBI["PG"][0]["dbHost"],
-		DBI["PG"][0]["dbPort"],
-		DBI["PG"][0]["dbUser"],
-		DBI["PG"][0]["dbPass"],
-		DBI["PG"][0]["dbName"])
+	dbinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		DBHost, DBPort, DBUser, DBPass, DBName, DBSSL)
 	db, err := sql.Open("postgres", dbinfo)
 	err = db.Ping()
 	if (err != nil) {
@@ -337,25 +362,25 @@ func main() {
 }
 
 func LoggerString(s string) {
-	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, _ := os.OpenFile(LOGPATH+_DN, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(f)
 	log.Print(s)
 }
 
 func LoggerMap(m map[string]string) {
-	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, _ := os.OpenFile(LOGPATH+_DN, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
  	log.SetOutput(f)
   	log.Print(m)
 }
 
 func LoggerErr(s error) {
-	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, _ := os.OpenFile(LOGPATH+_DN, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(f)
 	log.Print(s)
 }
 
 func LoggerByte(s []byte) {
-	f, _ := os.OpenFile(LOGPATH, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, _ := os.OpenFile(LOGPATH+_DN, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(f)
 	log.Print(s)
 }
