@@ -22,8 +22,11 @@
         "path" : "/var/log/asterisk/"
     },
     "Ban" : {
-        "Command" : "command",
-        "Chain" : "chain",
-        "Table" : "table"
+        "Command" : "bancommand",
+        "BanChain" : "BanChain",
+        "CallChain" : "CallChain",
+        "BanTable" : "BanTable",
+        "CallTable" : "CallTable",
+        "Event" : "UserEvent"
     }
 }

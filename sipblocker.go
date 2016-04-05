@@ -7,6 +7,7 @@ import (
 	"net"
 	"bufio"
 	"bytes"
+	"regexp"
 	"strings"
 	"strconv"
 	"os/exec"
@@ -16,7 +17,6 @@ import (
 	"github.com/takama/daemon"
 	"github.com/sdidyk/mtproto"
 	"github.com/yosh0/simpleMailNotify"
-
 )
 
 const (
@@ -28,6 +28,7 @@ const (
 	_CMD_END      	= "--END COMMAND--" // Asterisk command data end
 	_CACL 		= "Device does not match ACL" // cause acl
 	_CPASS 		= "Wrong password" // cause wrong pass
+	_CCRF		= "ChallengeResponseFailed" //cause challenge response failed
 )
 
 var (
@@ -40,9 +41,14 @@ var (
 	LOGPATH = ""
 	TG []string
 	TGPATH string
-	BANCHAIN, BANTABLE, BANCOMMAND string
+	BANCHAIN, BANTABLE, CALLCHAIN, CALLTABLE, BANCMD, BANEVENT string
+	unquotedChar  = `[^",\\{}\s(NULL)]`
+    	unquotedValue = fmt.Sprintf("(%s)+", unquotedChar)
+    	quotedChar  =	`[^"\\]|\\"|\\\\`
+    	quotedValue =	fmt.Sprintf("\"(%s)*\"", quotedChar)
+	arrayValue =	fmt.Sprintf("(?P<value>(%s|%s))", unquotedValue, quotedValue)
+	arrayExp =	regexp.MustCompile(fmt.Sprintf("((%s)(,)?)", arrayValue))
 )
-
 
 type Config struct {
 	Pg Pg
@@ -58,9 +64,12 @@ type LogDir struct {
 }
 
 type Ban struct {
-	Chain string
-	Table string
+	BanChain string
+	CallChain string
+	BanTable string
+	CallTable string
 	Command string
+	Event string
 }
 
 type Tg struct {
@@ -188,6 +197,8 @@ func eventHandler(E map[string]string) {
 		ChallengeResponseFailed(E)
 	} else if (E["Event"] == "RequestBadFormat") {
 		RequestBadFormat(E)
+	} else if (E["Event"] == "UserEvent" && E["UserEvent"] == BANEVENT) {
+		Blocker(E)
 	}
 }
 
@@ -202,15 +213,7 @@ func FailedACL(e map[string]string) {
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s %s ACL Name %s %s Proto %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
-	blk, err := exec.Command(BANCOMMAND, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
-	if err != nil {
-		LoggerErr(err)
-	} else {
-		LoggerByte(blk)
-	}
-	query := fmt.Sprintf("INSERT INTO %s (ip, num, cause) VALUES ('%s', '%s', '%s')",
-		BANTABLE, raddr, e["AccountID"], _CACL)
-	sqlPut(query)
+	BlockerBan(raddr, e["AccountID"], _CACL)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -229,21 +232,18 @@ func InvalidPassword(e map[string]string) {
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
-	blk, err := exec.Command(BANCOMMAND, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
-	if err != nil {
-		LoggerErr(err)
-	} else {
-		LoggerByte(blk)
-	}
-	query := fmt.Sprintf("INSERT INTO %s (ip, num, cause) VALUES ('%s', '%s', '%s')",
-		BANTABLE, raddr, e["AccountID"], _CPASS)
-	sqlPut(query)
+	BlockerBan(raddr, e["AccountID"], _CPASS)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
 func ChallengeResponseFailed(e map[string]string) {
 	LoggerMap(e)
-	simpleMailNotify.Notify(e["Event"], "Text", M)
+	raddr := RAddrGet(e["RemoteAddress"])
+	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
+		e["Event"], _LT, e["AccountID"], _LT, raddr)
+	BlockerBan(raddr, e["AccountID"], _CCRF)
+	simpleMailNotify.Notify(e["Event"], msg, M)
+
 }
 
 func RequestBadFormat(e map[string]string) {
@@ -253,55 +253,92 @@ func RequestBadFormat(e map[string]string) {
 //	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
-func init() {
-	file, e1 := os.Open("/etc/asterisk/asterisk_config.json")
-	if e1 != nil {
-		fmt.Println("Error: ", e1)
-		os.Exit(88)
-	}
-	decoder := json.NewDecoder(file)
-	conf := Config{}
-	err := decoder.Decode(&conf)
+func BlockerBan(raddr string, accountid string, cause string) {
+	blk, err := exec.Command(BANCMD, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
 	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(88)
+		LoggerErr(err)
+	} else {
+		LoggerByte(blk)
 	}
-	AMIport = conf.SIPBlockerAmi.RemotePort
-	AMIhost = conf.SIPBlockerAmi.RemoteHost
-	AMIuser = conf.SIPBlockerAmi.Username
-	AMIpass = conf.SIPBlockerAmi.Password
+	query := fmt.Sprintf("INSERT INTO %s (ip, num, cause) VALUES ('%s', '%s', '%s')",
+		BANTABLE, raddr, accountid, cause)
+	sqlPut(query)
+}
 
-	LOGPATH = conf.LogDir.Path
+func Blocker(e map[string]string) {
+	LoggerMap(e)
+	if e["Act"] == "Unban" && len(e["Ip"]) != 0 {
+		BlockerUnban(e["Ip"])
+	}
+}
 
-	BANCHAIN = conf.Ban.Chain
-	BANTABLE = conf.Ban.Table
-	BANCOMMAND = conf.Ban.Command
+func BlockerInit() {
+	BlockerDel()
+	BlockerAdd()
+	BlockerRestore()
+}
 
-	var m = make(map[string]string)
-	m["Server"] = conf.Mail.Server
-	m["Port"] = conf.Mail.Port
-	m["Domain"] = conf.Mail.Domain
-	m["Mailto"] = conf.Mail.Mailto
-	M["M"] = append(M["M"], m)
+func BlockerAdd() {
+	blk, err := exec.Command(BANCMD, "-N", BANCHAIN).Output()
+	blk, err = exec.Command(BANCMD, "-A", BANCHAIN, "-j", "RETURN").Output()
+	blk, err = exec.Command(BANCMD, "-I", "INPUT", "-p", "udp", "-j", BANCHAIN).Output()
 
-	DBPass = conf.Pg.DBPass
-	DBName = conf.Pg.DBName
-	DBHost = conf.Pg.DBHost
-	DBPort = conf.Pg.DBPort
-	DBUser = conf.Pg.DBUser
-	DBSSL = conf.Pg.DBSSL
+	blk, err = exec.Command(BANCMD, "-N", CALLCHAIN).Output()
+	blk, err = exec.Command(BANCMD, "-A", CALLCHAIN, "-j", "RETURN").Output()
+	blk, err = exec.Command(BANCMD, "-I", "INPUT", "-j", CALLCHAIN).Output()
+	if err != nil {
+		LoggerErr(err)
+	} else {
+		LoggerByte(blk)
+	}
+}
 
-	var d = make(map[string]string)
-	d["dbPass"] = conf.Pg.DBPass
-	d["dbName"] = conf.Pg.DBName
-	d["dbHost"] = conf.Pg.DBHost
-	d["dbPort"] = conf.Pg.DBPort
-	d["dbUser"] = conf.Pg.DBUser
-	DBI["PG"] = append(DBI["PG"], d)
+func BlockerDel() {
+	blk, err := exec.Command(BANCMD, "-D", "INPUT", "-p", "udp", "-j", BANCHAIN).Output()
+	blk, err = exec.Command(BANCMD, "-F", BANCHAIN).Output()
+	blk, err = exec.Command(BANCMD, "-X", BANCHAIN).Output()
 
-	TG = conf.Tg.Rcp
-	TGPATH = conf.Tg.Path
-	NotifyTG("Start/Restart " + _DN + " " + _DD)
+	blk, err = exec.Command(BANCMD, "-D", "INPUT", "-j", CALLCHAIN).Output()
+	blk, err = exec.Command(BANCMD, "-F", CALLCHAIN).Output()
+	blk, err = exec.Command(BANCMD, "-X", CALLCHAIN).Output()
+	if err != nil {
+		LoggerErr(err)
+	} else {
+		LoggerByte(blk)
+	}
+}
+
+func BlockerUnban(i string) {
+	blk, err := exec.Command(BANCMD, "-D", BANCHAIN, "-s", i, "-j", "DROP").Output()
+	if err != nil {
+		LoggerErr(err)
+	} else {
+		LoggerByte(blk)
+	}
+	query := fmt.Sprintf("DELETE FROM %s WHERE ip = '%s'", BANTABLE, i)
+	sqlPut(query)
+	LoggerString(query)
+}
+
+func BlockerRestore() {
+	query := fmt.Sprintf("SELECT ip FROM %s",
+		CALLTABLE)
+	blist := sqlGetArray(query)
+	if len(blist) != 0 {
+		for _, i := range blist {
+			rex, err := regexp.Compile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
+			res := rex.FindStringSubmatch(i)
+			if res != nil {
+				_, err = exec.Command(BANCMD, "-I", CALLCHAIN, "1", "-s", i, "-j", "DROP").Output()
+
+			}
+			if err != nil {
+				LoggerErr(err)
+			}
+		}
+	} else {
+		NotifyTG(_DN+" sipblocker list = 0")
+	}
 }
 
 func NotifyTG(tg_msg string) {
@@ -344,6 +381,91 @@ func sqlPut(query string) {
 	}
 	result.LastInsertId()
 	db.Close()
+}
+
+func sqlGetArray(query string) []string {
+	dbinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		DBHost, DBPort, DBUser, DBPass, DBName, DBSSL)
+	db, err := sql.Open("postgres", dbinfo)
+	rows, err := db.Query(query)
+	if (err != nil) {
+		LoggerErr(err)
+	} else {
+
+	}
+	defer rows.Close()
+	var arr string
+	var el []string
+	for rows.Next() {
+		rows.Scan(&arr)
+		VAR := pgArrayToSlice(arr) //var for single field query output
+		el = append(el, VAR...)
+	}
+	if (len(el) < 1) {
+		el = append(el, "Err")
+	}
+	db.Close()
+	return el
+}
+
+func pgArrayToSlice(array string) []string {
+    var valueIndex int
+    results := make([]string, 0)
+    matches := arrayExp.FindAllStringSubmatch(array, -1)
+    for _, match := range matches {
+        s := match[valueIndex]
+        s = strings.Trim(s, "\"")
+        results = append(results, s)
+    }
+    return results
+}
+
+func init() {
+	file, e1 := os.Open("/etc/asterisk/asterisk_config.json")
+	if e1 != nil {
+		fmt.Println("Error: ", e1)
+		os.Exit(88)
+	}
+	decoder := json.NewDecoder(file)
+	conf := Config{}
+	err := decoder.Decode(&conf)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(88)
+	}
+	AMIport = conf.SIPBlockerAmi.RemotePort
+	AMIhost = conf.SIPBlockerAmi.RemoteHost
+	AMIuser = conf.SIPBlockerAmi.Username
+	AMIpass = conf.SIPBlockerAmi.Password
+
+	LOGPATH = conf.LogDir.Path
+
+	BANCHAIN = conf.Ban.BanChain
+	BANTABLE = conf.Ban.BanTable
+	CALLCHAIN = conf.Ban.CallChain
+	CALLTABLE = conf.Ban.CallTable
+	BANEVENT = conf.Ban.Event
+
+	BANCMD = conf.Ban.Command
+
+	var m = make(map[string]string)
+	m["Server"] = conf.Mail.Server
+	m["Port"] = conf.Mail.Port
+	m["Domain"] = conf.Mail.Domain
+	m["Mailto"] = conf.Mail.Mailto
+	M["M"] = append(M["M"], m)
+
+	DBPass = conf.Pg.DBPass
+	DBName = conf.Pg.DBName
+	DBHost = conf.Pg.DBHost
+	DBPort = conf.Pg.DBPort
+	DBUser = conf.Pg.DBUser
+	DBSSL = conf.Pg.DBSSL
+
+	TG = conf.Tg.Rcp
+	TGPATH = conf.Tg.Path
+	BlockerInit()
+	NotifyTG("Start/Restart " + _DN + " " + _DD)
 }
 
 func main() {
