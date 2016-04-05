@@ -28,7 +28,7 @@ const (
 	_CMD_END      	= "--END COMMAND--" // Asterisk command data end
 	_CACL 		= "Device does not match ACL" // cause acl
 	_CPASS 		= "Wrong password" // cause wrong pass
-	_CCRF		= "ChallengeResponseFailed" //cause challenge response failed
+	_CCRF		= "Challenge Response Failed" //cause challenge response failed
 )
 
 var (
@@ -236,11 +236,15 @@ func InvalidPassword(e map[string]string) {
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
+/*
+2016/04/05 11:35:33 map[Event:ChallengeResponseFailed EventTV:2016-04-05T11 AccountID:25685 SessionID:0x7fb694149e98 LocalAddress:IPV4/UDP/178.49.139.8/5060 Challenge:3554a6e2 Response:25685@178.49.139.8 ExpectedResponse:25685 Privilege:security,all Severity:Error Service:SIP EventVersion:1 RemoteAddress:IPV4/UDP/5.128.252.45/61612]
+*/
+
 func ChallengeResponseFailed(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
-		e["Event"], _LT, e["AccountID"], _LT, raddr)
+	msg := fmt.Sprintf("%s %s Number1 %s %s Number2 %s %s IP Address %s",
+		e["Event"], _LT, e["AccountID"], _LT, e["ExpectedResponse"], _LT, raddr)
 	BlockerBan(raddr, e["AccountID"], _CCRF)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 
