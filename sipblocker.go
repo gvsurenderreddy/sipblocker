@@ -214,17 +214,26 @@ func FailedACL(e map[string]string) {
 	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s %s ACL Name %s %s Proto %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
 	BlockerBan(raddr, e["AccountID"], _CACL)
+	NotifyTG(msg)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
 func InvalidAccountID(e map[string]string) {
 	LoggerMap(e)
-	simpleMailNotify.Notify(e["Event"], "Text", M)
+	raddr := RAddrGet(e["RemoteAddress"])
+	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
+		e["Event"], _LT, e["AccountID"], _LT, raddr)
+	NotifyTG(msg)
+	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
 func UnexpectedAddress(e map[string]string) {
 	LoggerMap(e)
-	simpleMailNotify.Notify(e["Event"], "Text", M)
+	raddr := RAddrGet(e["RemoteAddress"])
+	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
+		e["Event"], _LT, e["AccountID"], _LT, raddr)
+	NotifyTG(msg)
+	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
 func InvalidPassword(e map[string]string) {
@@ -232,29 +241,23 @@ func InvalidPassword(e map[string]string) {
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
+	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CPASS)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
-
-/*
-2016/04/05 11:35:33 map[Event:ChallengeResponseFailed EventTV:2016-04-05T11 AccountID:25685 SessionID:0x7fb694149e98 LocalAddress:IPV4/UDP/178.49.139.8/5060 Challenge:3554a6e2 Response:25685@178.49.139.8 ExpectedResponse:25685 Privilege:security,all Severity:Error Service:SIP EventVersion:1 RemoteAddress:IPV4/UDP/5.128.252.45/61612]
-*/
 
 func ChallengeResponseFailed(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %s Number1 %s %s Number2 %s %s IP Address %s",
 		e["Event"], _LT, e["AccountID"], _LT, e["ExpectedResponse"], _LT, raddr)
+	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CCRF)
 	simpleMailNotify.Notify(e["Event"], msg, M)
-
 }
 
 func RequestBadFormat(e map[string]string) {
-	LoggerMap(e)
-//	raddr := RAddrGet(e["RemoteAddress"])
-//	msg := e["Event"] + _LT + e["AccountID"] + _LT + e["RequestType"] + _LT + e["Severity"] +  _LT + raddr
-//	simpleMailNotify.Notify(e["Event"], msg, M)
+
 }
 
 func BlockerBan(raddr string, accountid string, cause string) {
