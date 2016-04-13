@@ -41,7 +41,9 @@ var (
 	LOGPATH = ""
 	TG []string
 	TGPATH string
-	BANCHAIN, BANTABLE, CALLCHAIN, CALLTABLE, BANCMD, BANEVENT string
+	BANCHAIN, BANTABLE, BANCMD, BANEVENT string
+	BANQUERYD, BANQUERYDW, BANQUERYI string
+	CALLCHAIN, CALLTABLE, CALLQUERYS string
 	unquotedChar  = `[^",\\{}\s(NULL)]`
     	unquotedValue = fmt.Sprintf("(%s)+", unquotedChar)
     	quotedChar  =	`[^"\\]|\\"|\\\\`
@@ -65,9 +67,13 @@ type LogDir struct {
 
 type Ban struct {
 	BanChain string
-	CallChain string
 	BanTable string
+	BanQueryD string
+	BanQueryDW string
+	BanQueryI string
+	CallChain string
 	CallTable string
+	CallQueryS string
 	Command string
 	Event string
 }
@@ -214,7 +220,6 @@ func FailedACL(e map[string]string) {
 	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s %s ACL Name %s %s Proto %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
 	BlockerBan(raddr, e["AccountID"], _CACL)
-	NotifyTG(msg)
 	simpleMailNotify.Notify(e["Event"], msg, M)
 }
 
@@ -260,6 +265,25 @@ func RequestBadFormat(e map[string]string) {
 
 }
 
+func Blocker(e map[string]string) {
+	LoggerMap(e)
+	if e["Act"] == "Unban" && len(e["Ip"]) != 0 {
+		BlockerUnban(e["Ip"])
+	}
+}
+
+func BlockerUnban(i string) {
+	blk, err := exec.Command(BANCMD, "-D", BANCHAIN, "-s", i, "-j", "DROP").Output()
+	if err != nil {
+		LoggerErr(err)
+	} else {
+		LoggerByte(blk)
+	}
+	query := fmt.Sprintf(BANQUERYDW, BANTABLE, i)
+	sqlPut(query)
+	LoggerString(query)
+}
+
 func BlockerBan(raddr string, accountid string, cause string) {
 	blk, err := exec.Command(BANCMD, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
 	if err != nil {
@@ -267,16 +291,8 @@ func BlockerBan(raddr string, accountid string, cause string) {
 	} else {
 		LoggerByte(blk)
 	}
-	query := fmt.Sprintf("INSERT INTO %s (ip, num, cause) VALUES ('%s', '%s', '%s')",
-		BANTABLE, raddr, accountid, cause)
+	query := fmt.Sprintf(BANQUERYI, BANTABLE, raddr, accountid, cause)
 	sqlPut(query)
-}
-
-func Blocker(e map[string]string) {
-	LoggerMap(e)
-	if e["Act"] == "Unban" && len(e["Ip"]) != 0 {
-		BlockerUnban(e["Ip"])
-	}
 }
 
 func BlockerInit() {
@@ -313,23 +329,13 @@ func BlockerDel() {
 	} else {
 		LoggerByte(blk)
 	}
-}
-
-func BlockerUnban(i string) {
-	blk, err := exec.Command(BANCMD, "-D", BANCHAIN, "-s", i, "-j", "DROP").Output()
-	if err != nil {
-		LoggerErr(err)
-	} else {
-		LoggerByte(blk)
-	}
-	query := fmt.Sprintf("DELETE FROM %s WHERE ip = '%s'", BANTABLE, i)
+	query := fmt.Sprintf(BANQUERYD, BANTABLE)
 	sqlPut(query)
 	LoggerString(query)
 }
 
 func BlockerRestore() {
-	query := fmt.Sprintf("SELECT ip FROM %s",
-		CALLTABLE)
+	query := fmt.Sprintf(CALLQUERYS, CALLTABLE)
 	blist := sqlGetArray(query)
 	if len(blist) != 0 {
 		for _, i := range blist {
@@ -449,8 +455,13 @@ func init() {
 
 	BANCHAIN = conf.Ban.BanChain
 	BANTABLE = conf.Ban.BanTable
+	BANQUERYD = conf.Ban.BanQueryD
+	BANQUERYDW = conf.Ban.BanQueryDW
+	BANQUERYI = conf.Ban.BanQueryI
+
 	CALLCHAIN = conf.Ban.CallChain
 	CALLTABLE = conf.Ban.CallTable
+	CALLQUERYS = conf.Ban.CallQueryS
 	BANEVENT = conf.Ban.Event
 
 	BANCMD = conf.Ban.Command

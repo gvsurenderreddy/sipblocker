@@ -24,9 +24,13 @@
     "Ban" : {
         "Command" : "bancommand",
         "BanChain" : "BanChain",
-        "CallChain" : "CallChain",
         "BanTable" : "BanTable",
+        "BanQueryD" : "",
+        "BanQueryDW" : "",
+        "BanQueryI" : "",
+        "CallChain" : "CallChain",
         "CallTable" : "CallTable",
-        "Event" : "UserEvent"
+        "Event" : "UserEvent",
+        "CallQueryS" : ""
     }
 }
