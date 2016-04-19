@@ -15,7 +15,7 @@ import (
 	"encoding/json"
 	_"github.com/lib/pq"
 	"github.com/takama/daemon"
-	"github.com/sdidyk/mtproto"
+	"github.com/yosh0/mtproto"
 	"github.com/yosh0/simpleMailNotify"
 )
 
