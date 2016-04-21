@@ -32,8 +32,6 @@ const (
 )
 
 var (
-	M = make(map[string][]map[string]string) //MAIL MAP
-	DBI =  make(map[string][]map[string]string) //DB CONNECT MAP
 	_PT_BYTES = []byte(_LT + _LT) // packet separator
   	errlog *log.Logger
 	AMIhost, AMIuser, AMIpass, AMIport string
@@ -231,7 +229,7 @@ func RAddrGet(a string) (string) {
 func FailedACL(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s %s ACL Name %s %s Proto %s",
+	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s %sACL Name %s %sProto %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
 	BlockerBan(raddr, e["AccountID"], _CACL)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
@@ -366,6 +364,7 @@ func BlockerRestore() {
 	} else {
 		NotifyTG(_DN+" sipblocker list = 0")
 	}
+	blist = make([]string, 0)
 }
 
 func NotifyMail(action string, category string, message string, mailto string) {
@@ -481,16 +480,16 @@ func pgArrayToSlice(array string) []string {
 }
 
 func init() {
-	file, e1 := os.Open("/etc/asterisk/asterisk_config.json")
-	if e1 != nil {
-		fmt.Println("Error: ", e1)
+	file, err := os.Open("/etc/asterisk/asterisk_config.json")
+	if err != nil {
+		fmt.Println(err)
 		os.Exit(88)
 	}
 	decoder := json.NewDecoder(file)
 	conf := Config{}
-	err := decoder.Decode(&conf)
+	err = decoder.Decode(&conf)
 	if err != nil {
-		fmt.Println("Error: ", err)
+		fmt.Println(err)
 		os.Exit(88)
 	}
 	AMIport = conf.SIPBlockerAmi.RemotePort
@@ -513,13 +512,6 @@ func init() {
 
 	BANCMD = conf.Ban.Command
 
-	var m = make(map[string]string)
-	m["Server"] = conf.Mail.Server
-	m["Port"] = conf.Mail.Port
-	m["Domain"] = conf.Mail.Domain
-	m["Mailto"] = conf.Mail.Mailto
-	M["M"] = append(M["M"], m)
-
 	MAILSERVER = conf.Mail.Server
 	MAILPORT = conf.Mail.Port
 	MAILDOMAIN = conf.Mail.Domain
@@ -536,6 +528,7 @@ func init() {
 
 	TG = conf.Tg.Rcp
 	TGPATH = conf.Tg.Path
+	file.Close()
 	BlockerInit()
 	NotifyTG("Start/Restart " + _DN + " " + _DD)
 }
