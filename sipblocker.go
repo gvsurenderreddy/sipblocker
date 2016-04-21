@@ -11,12 +11,12 @@ import (
 	"strings"
 	"strconv"
 	"os/exec"
+	"net/smtp"
 	"database/sql"
 	"encoding/json"
 	_"github.com/lib/pq"
 	"github.com/takama/daemon"
 	"github.com/yosh0/mtproto"
-	"github.com/yosh0/simpleMailNotify"
 )
 
 const (
@@ -44,6 +44,7 @@ var (
 	BANCHAIN, BANTABLE, BANCMD, BANEVENT string
 	BANQUERYD, BANQUERYDW, BANQUERYI string
 	CALLCHAIN, CALLTABLE, CALLQUERYS string
+	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO, MAIL string
 	unquotedChar  = `[^",\\{}\s(NULL)]`
     	unquotedValue = fmt.Sprintf("(%s)+", unquotedChar)
     	quotedChar  =	`[^"\\]|\\"|\\\\`
@@ -104,6 +105,8 @@ type Mail struct {
 	Port	string
 	Domain	string
 	Mailto	string
+	Mail	string
+	Header	string
 }
 
 type CallcenterLog struct {
@@ -231,35 +234,36 @@ func FailedACL(e map[string]string) {
 	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s %s ACL Name %s %s Proto %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
 	BlockerBan(raddr, e["AccountID"], _CACL)
-	simpleMailNotify.Notify(e["Event"], msg, M)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
 }
 
 func InvalidAccountID(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
+	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	NotifyTG(msg)
-	simpleMailNotify.Notify(e["Event"], msg, M)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
 }
 
 func UnexpectedAddress(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
+	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	NotifyTG(msg)
-	simpleMailNotify.Notify(e["Event"], msg, M)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
 }
 
 func InvalidPassword(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %s Number %s %s IP Address %s",
+	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
-	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CPASS)
-	simpleMailNotify.Notify(e["Event"], msg, M)
+	NotifyTG(msg)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
+
 }
 
 func ChallengeResponseFailed(e map[string]string) {
@@ -269,7 +273,7 @@ func ChallengeResponseFailed(e map[string]string) {
 		e["Event"], _LT, e["AccountID"], _LT, e["ExpectedResponse"], _LT, raddr)
 	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CCRF)
-	simpleMailNotify.Notify(e["Event"], msg, M)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
 }
 
 func RequestBadFormat(e map[string]string) {
@@ -362,6 +366,39 @@ func BlockerRestore() {
 	} else {
 		NotifyTG(_DN+" sipblocker list = 0")
 	}
+}
+
+func NotifyMail(action string, category string, message string, mailto string) {
+	hname, err := os.Hostname()
+	subj_hname := fmt.Sprintf("[%s]", strings.ToUpper(hname))
+	subj_category := fmt.Sprintf("[%s]", strings.ToUpper(category))
+	subj_action := fmt.Sprintf("[%s]", strings.ToUpper(action))
+	c, err := smtp.Dial(fmt.Sprintf("%s:%s", MAILSERVER, MAILPORT))
+	if err != nil {
+		LoggerString("Error: Cant connect to Mail server")
+		LoggerErr(err)
+	} else {
+		c.Mail(fmt.Sprintf("%s@%s", hname, MAILDOMAIN))
+		c.Rcpt(fmt.Sprintf("%s@%s", mailto, MAILDOMAIN))
+		wc, err := c.Data()
+		if err != nil {
+			LoggerErr(err)
+		}
+		msg := []byte(fmt.Sprintf(MAILHEADER,
+			_LT, mailto, MAILDOMAIN, _LT, subj_hname, subj_action, subj_category, _LT, _LT, message, _LT))
+		_, err = wc.Write(msg)
+		defer wc.Close()
+		LoggerString(string(msg))
+		if err != nil {
+			LoggerErr(err)
+		}
+		err = wc.Close()
+		if err != nil {
+			LoggerErr(err)
+		}
+		c.Quit()
+	}
+	defer c.Close()
 }
 
 func NotifyTG(tg_msg string) {
@@ -482,6 +519,13 @@ func init() {
 	m["Domain"] = conf.Mail.Domain
 	m["Mailto"] = conf.Mail.Mailto
 	M["M"] = append(M["M"], m)
+
+	MAILSERVER = conf.Mail.Server
+	MAILPORT = conf.Mail.Port
+	MAILDOMAIN = conf.Mail.Domain
+	MAILHEADER = conf.Mail.Header
+	MAILTO = conf.Mail.Mailto
+	MAIL = conf.Mail.Mail
 
 	DBPass = conf.Pg.DBPass
 	DBName = conf.Pg.DBName
