@@ -189,22 +189,33 @@ func eventGet() {
 	}
 }
 
-
 func eventHandler(E map[string]string) {
-	if (E["Event"] == "FailedACL") {
+	switch E["Event"] {
+	case "FailedACL" :
 		FailedACL(E)
-	} else if (E["Event"] == "InvalidAccountID") {
+	case "InvalidAccountID" :
 		InvalidAccountID(E)
-	} else if (E["Event"] == "UnexpectedAddress") {
+	case "UnexpectedAddress" :
 		UnexpectedAddress(E)
-	} else if (E["Event"] == "InvalidPassword") {
+	case "InvalidPassword" :
 		InvalidPassword(E)
-	} else if (E["Event"] == "ChallengeResponseFailed") {
+	case "ChallengeResponseFailed" :
 		ChallengeResponseFailed(E)
-	} else if (E["Event"] == "RequestBadFormat") {
+	case "RequestBadFormat" :
 		RequestBadFormat(E)
-	} else if (E["Event"] == "UserEvent" && E["UserEvent"] == BANEVENT) {
-		Blocker(E)
+	case "UserEvent" :
+		UserEvent(E)
+	default :
+
+	}
+}
+
+func UserEvent(e map[string]string) {
+	switch e["UserEvent"] {
+	case BANEVENT :
+		Blocker(e)
+	default :
+
 	}
 }
 
@@ -343,7 +354,6 @@ func BlockerRestore() {
 			res := rex.FindStringSubmatch(i)
 			if res != nil {
 				_, err = exec.Command(BANCMD, "-I", CALLCHAIN, "1", "-s", i, "-j", "DROP").Output()
-
 			}
 			if err != nil {
 				LoggerErr(err)
