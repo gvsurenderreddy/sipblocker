@@ -229,7 +229,7 @@ func RAddrGet(a string) (string) {
 func FailedACL(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s %sACL Name %s %sProto %s",
+	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s %sACL Name: %s %sProto: %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
 	BlockerBan(raddr, e["AccountID"], _CACL)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
@@ -238,7 +238,7 @@ func FailedACL(e map[string]string) {
 func InvalidAccountID(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s",
+	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	NotifyTG(msg)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
@@ -247,7 +247,7 @@ func InvalidAccountID(e map[string]string) {
 func UnexpectedAddress(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s",
+	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	NotifyTG(msg)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
@@ -256,7 +256,7 @@ func UnexpectedAddress(e map[string]string) {
 func InvalidPassword(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %sNumber %s %sIP Address %s",
+	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	BlockerBan(raddr, e["AccountID"], _CPASS)
 	NotifyTG(msg)
@@ -267,7 +267,7 @@ func InvalidPassword(e map[string]string) {
 func ChallengeResponseFailed(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %s Number1 %s %s Number2 %s %s IP Address %s",
+	msg := fmt.Sprintf("%s %s Number1: %s %s Number2: %s %s IP Address: %s",
 		e["Event"], _LT, e["AccountID"], _LT, e["ExpectedResponse"], _LT, raddr)
 	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CCRF)
