@@ -315,7 +315,7 @@ func BlockerInit() {
 func BlockerAdd() {
 	blk, err := exec.Command(BANCMD, "-N", BANCHAIN).Output()
 	blk, err = exec.Command(BANCMD, "-A", BANCHAIN, "-j", "RETURN").Output()
-	blk, err = exec.Command(BANCMD, "-I", "INPUT", "-p", "udp", "-j", BANCHAIN).Output()
+	blk, err = exec.Command(BANCMD, "-I", "INPUT", "-j", BANCHAIN).Output()
 
 	blk, err = exec.Command(BANCMD, "-N", CALLCHAIN).Output()
 	blk, err = exec.Command(BANCMD, "-A", CALLCHAIN, "-j", "RETURN").Output()
@@ -328,7 +328,7 @@ func BlockerAdd() {
 }
 
 func BlockerDel() {
-	blk, err := exec.Command(BANCMD, "-D", "INPUT", "-p", "udp", "-j", BANCHAIN).Output()
+	blk, err := exec.Command(BANCMD, "-D", "INPUT", "-j", BANCHAIN).Output()
 	blk, err = exec.Command(BANCMD, "-F", BANCHAIN).Output()
 	blk, err = exec.Command(BANCMD, "-X", BANCHAIN).Output()
 
