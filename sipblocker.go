@@ -371,7 +371,7 @@ func NotifyMail(action string, category string, message string, mailto string) {
 	hname, err := os.Hostname()
 	subj_hname := fmt.Sprintf("[%s]", strings.ToUpper(hname))
 	subj_category := fmt.Sprintf("[%s]", strings.ToUpper(category))
-	subj_action := fmt.Sprintf("[%s]", strings.ToUpper(action))
+	subj_action := fmt.Sprintf("[%s]", action)
 	c, err := smtp.Dial(fmt.Sprintf("%s:%s", MAILSERVER, MAILPORT))
 	if err != nil {
 		LoggerString("Error: Cant connect to Mail server")
