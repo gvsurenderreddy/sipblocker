@@ -232,7 +232,7 @@ func FailedACL(e map[string]string) {
 	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s %sACL Name: %s %sProto: %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
 	BlockerBan(raddr, e["AccountID"], _CACL)
-	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 }
 
 func InvalidAccountID(e map[string]string) {
@@ -241,7 +241,7 @@ func InvalidAccountID(e map[string]string) {
 	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	NotifyTG(msg)
-	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 }
 
 func UnexpectedAddress(e map[string]string) {
@@ -250,7 +250,7 @@ func UnexpectedAddress(e map[string]string) {
 	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	NotifyTG(msg)
-	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 }
 
 func InvalidPassword(e map[string]string) {
@@ -260,7 +260,7 @@ func InvalidPassword(e map[string]string) {
 		e["Event"], _LT, e["AccountID"], _LT, raddr)
 	BlockerBan(raddr, e["AccountID"], _CPASS)
 	NotifyTG(msg)
-	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 
 }
 
@@ -271,7 +271,7 @@ func ChallengeResponseFailed(e map[string]string) {
 		e["Event"], _LT, e["AccountID"], _LT, e["ExpectedResponse"], _LT, raddr)
 	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CCRF)
-	NotifyMail(e["Event"], e["AccountID"], msg, MAIL)
+	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 }
 
 func RequestBadFormat(e map[string]string) {
