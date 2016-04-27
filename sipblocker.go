@@ -278,6 +278,21 @@ func RequestBadFormat(e map[string]string) {
 
 }
 
+func BlockerCheckIP(i string) bool {
+	cmd := fmt.Sprintf("%s -nL %s | grep %s | wc -l", BANCMD, BANCHAIN, i)
+	blk, err := exec.Command("bash", "-c", cmd).Output()
+	if err != nil {
+		LoggerErr(err)
+	} else {
+		tblk := strings.Trim(string(blk), "\n")
+		if tblk > "0" {
+			LoggerByte(blk)
+			return true
+		}
+	}
+	return false
+}
+
 func Blocker(e map[string]string) {
 	LoggerMap(e)
 	if e["Act"] == "Unban" && len(e["Ip"]) != 0 {
@@ -298,14 +313,16 @@ func BlockerUnban(i string) {
 }
 
 func BlockerBan(raddr string, accountid string, cause string) {
-	blk, err := exec.Command(BANCMD, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
-	if err != nil {
-		LoggerErr(err)
-	} else {
-		LoggerByte(blk)
+	if BlockerCheckIP(raddr) == false {
+		blk, err := exec.Command(BANCMD, "-I", BANCHAIN, "1", "-s", raddr, "-j", "DROP").Output()
+		if err != nil {
+			LoggerErr(err)
+		} else {
+			LoggerByte(blk)
+		}
+		query := fmt.Sprintf(BANQUERYI, BANTABLE, raddr, accountid, cause)
+		sqlPut(query)
 	}
-	query := fmt.Sprintf(BANQUERYI, BANTABLE, raddr, accountid, cause)
-	sqlPut(query)
 }
 
 func BlockerInit() {
