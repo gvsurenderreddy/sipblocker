@@ -12,8 +12,12 @@ import (
 	"strconv"
 	"os/exec"
 	"net/smtp"
+	"crypto/md5"
+	"crypto/aes"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
+	"crypto/cipher"
 	_"github.com/lib/pq"
 	"github.com/takama/daemon"
 	"github.com/yosh0/mtproto"
@@ -118,7 +122,7 @@ type Service struct {
 }
 
 func (service *Service) Manage() (string, error) {
-	usage := "Usage: myservice install | remove | start | stop | status\nconfig 'asterisk_config.json' should be placed in /etc/asterisk"
+	usage := "Usage: myservice install | remove | start | stop | status\n"
 	if len(os.Args) > 1 {
 		command := os.Args[1]
 		switch command {
@@ -222,7 +226,6 @@ func UserEvent(e map[string]string) {
 
 func RAddrGet(a string) (string) {
 	raddr := strings.Split(a, "/")
-	LoggerString("REMOTE ADDR " + raddr[2])
 	return raddr[2]
 }
 
@@ -496,19 +499,50 @@ func pgArrayToSlice(array string) []string {
     return results
 }
 
-func init() {
-	file, err := os.Open("/etc/asterisk/asterisk_config.json")
+func decrypt(cipherstring string, keystring string) []byte {
+	ciphertext := []byte(cipherstring)
+	key := []byte(keystring)
+	block, err := aes.NewCipher(key)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(88)
+		panic(err)
 	}
-	decoder := json.NewDecoder(file)
+	if len(ciphertext) < aes.BlockSize {
+		panic("Text is too short")
+	}
+	iv := ciphertext[:aes.BlockSize]
+	ciphertext = ciphertext[aes.BlockSize:]
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(ciphertext, ciphertext)
+	return ciphertext
+}
+
+func init() {
+	k := os.Getenv("ASTCONFIG")
+	f, err := os.Open(os.Getenv("ASTCONF"))
+
+	if err != nil {
+		LoggerString(err.Error())
+	}
+	data := make([]byte, 10000)
+	count, err := f.Read(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hasher := md5.New()
+    	hasher.Write([]byte(k))
+    	key := hex.EncodeToString(hasher.Sum(nil))
+
+	content := string(data[:count])
+	df := decrypt(content, key)
+	c := bytes.NewReader(df)
+	decoder := json.NewDecoder(c)
 	conf := Config{}
 	err = decoder.Decode(&conf)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(88)
+		LoggerString(err.Error())
 	}
+
 	AMIport = conf.SIPBlockerAmi.RemotePort
 	AMIhost = conf.SIPBlockerAmi.RemoteHost
 	AMIuser = conf.SIPBlockerAmi.Username
@@ -526,7 +560,6 @@ func init() {
 	CALLTABLE = conf.Ban.CallTable
 	CALLQUERYS = conf.Ban.CallQueryS
 	BANEVENT = conf.Ban.Event
-
 	BANCMD = conf.Ban.Command
 
 	MAILSERVER = conf.Mail.Server
@@ -545,7 +578,6 @@ func init() {
 
 	TG = conf.Tg.Rcp
 	TGPATH = conf.Tg.Path
-	file.Close()
 	BlockerInit()
 	NotifyTG("Start/Restart " + _DN + " " + _DD)
 }
