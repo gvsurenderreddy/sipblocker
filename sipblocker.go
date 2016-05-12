@@ -26,7 +26,7 @@ import (
 const (
   	_DN  		= "sipblocker"
   	_DD  		= "Phreakers blocker"
-	_LT		= "\r\n"            // packet line separator
+	_LT		= "\x0D\x0A"
 	_KVT 		= ":"               // header value separator
 	_READ_BUF     	= 512               // buffer size for socket reader
 	_CMD_END      	= "--END COMMAND--" // Asterisk command data end
