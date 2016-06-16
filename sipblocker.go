@@ -228,19 +228,16 @@ func eventHandler(E map[string]string) {
 }
 
 func PeerStatus(e map[string]string) {
-	LoggerMap(e)
 	num := strings.Split(e["Peer"], "/")
-	LoggerString("Num1 " + string(num[1]) + " " + string(LENGTHINNERNUM))
 	if len(num[1]) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
-		LoggerString("Num2 " + num[1] + " PeerStatus " + e["PeerStatus"])
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
 		res := rex.FindStringSubmatch(e["Address"])
 		if res != nil {
-			LoggerMap(e)
 			port := res[2]
 			if port != PORTNUM {
+				LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s ", e["Peer"], e["Address"], port))
 				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s", e["Event"], _LT, e["Peer"], _LT, e["Address"])
-				NotifyMail(e["WrongPort"], e["Peer"], msg, MAILTO)
+				NotifyMail("WrongPort", e["Peer"], msg, MAILTO)
 			}
 		}
 		if err != nil {
