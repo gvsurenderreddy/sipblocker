@@ -49,6 +49,7 @@ var (
 	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO string
 	LENGTHINNERNUM int
 	PORTNUM string
+	ALLOWOFFICE []string
 
 	unquotedChar  = `[^",\\{}\s(NULL)]`
     	unquotedValue = fmt.Sprintf("(%s)+", unquotedChar)
@@ -65,7 +66,12 @@ type Config struct {
 	Mail Mail
 	LogDir LogDir
 	Numbers Numbers
+	Network Network
 	SIPBlockerAmi SIPBlockerAmi
+}
+
+type Network struct {
+	AllowOffice []string
 }
 
 type Numbers struct {
@@ -227,22 +233,51 @@ func eventHandler(E map[string]string) {
 	}
 }
 
+func checkIP(ipip string) (bool) {
+	cip := net.ParseIP(ipip)
+	for _, iprange := range ALLOWOFFICE {
+		ip, ipnet, err := net.ParseCIDR(iprange)
+		if err != nil {
+			LoggerErr(err)
+		}
+		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+			if ip.String() == cip.String() {
+				LoggerString("IP FROM ALLOW NETWORK " + ip.String())
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func inc(ip net.IP) {
+	for j := len(ip)-1; j>=0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
 func PeerStatus(e map[string]string) {
 	num := strings.Split(e["Peer"], "/")
 	if len(num[1]) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
 		res := rex.FindStringSubmatch(e["Address"])
 		if res != nil && res[2] != PORTNUM {
-			LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s ", e["Peer"], res[1], res[2]))
-			msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s %sPort: %s", "WrongPort", _LT, e["Peer"], _LT, res[1], _LT, res[2])
-			NotifyMail("WrongPort", e["Peer"], msg, MAILTO)
+			if checkIP(res[1]) == true {
+
+			} else {
+				LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s ", e["Peer"], res[1], res[2]))
+				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s %sPort: %s", "WrongPort", _LT, e["Peer"], _LT, res[1], _LT, res[2])
+				NotifyMail("WrongPort", e["Peer"], msg, MAILTO)
+			}
 		}
 		if err != nil {
 			LoggerString(err.Error())
 		}
 	}
 }
-
 
 func UserEvent(e map[string]string) {
 	switch e["UserEvent"] {
@@ -608,6 +643,8 @@ func init() {
 	LENGTHINNERNUM = conf.Numbers.Lengthinnernum
 //	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
 	PORTNUM = conf.Numbers.PortNum
+
+	ALLOWOFFICE = conf.Network.AllowOffice
 
 	TG = conf.Tg.Rcp
 	TGPATH = conf.Tg.Path
