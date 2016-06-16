@@ -243,6 +243,7 @@ func PeerStatus(e map[string]string) {
 	}
 }
 
+
 func UserEvent(e map[string]string) {
 	switch e["UserEvent"] {
 	case BANEVENT :
