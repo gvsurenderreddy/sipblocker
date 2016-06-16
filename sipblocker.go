@@ -47,6 +47,8 @@ var (
 	BANQUERYD, BANQUERYDW, BANQUERYI string
 	CALLCHAIN, CALLTABLE, CALLQUERYS string
 	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO, MAIL string
+	LENGTHOUTERNUM, LENGTHINNERNUM, PORTNUM string
+
 	unquotedChar  = `[^",\\{}\s(NULL)]`
     	unquotedValue = fmt.Sprintf("(%s)+", unquotedChar)
     	quotedChar  =	`[^"\\]|\\"|\\\\`
@@ -61,7 +63,14 @@ type Config struct {
 	Ban Ban
 	Mail Mail
 	LogDir LogDir
+	Numbers Numbers
 	SIPBlockerAmi SIPBlockerAmi
+}
+
+type Numbers struct {
+	Lengtinnernum 	string
+	Lengtouternum 	string
+	PortNum		string
 }
 
 type LogDir struct {
@@ -210,8 +219,28 @@ func eventHandler(E map[string]string) {
 		RequestBadFormat(E)
 	case "UserEvent" :
 		UserEvent(E)
+	case "PeerStatus" :
+		PeerStatus(E)
 	default :
 
+	}
+}
+
+func PeerStatus(e map[string]string) {
+	num := strings.Split(e["Peer"], "/")
+	if len(num[1] == LENGTHINNERNUM && e["PeerStatus"] == "Registered") {
+		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
+		res := rex.FindStringSubmatch(e["Address"])
+		if res != nil {
+			port := res[2]
+			if port != PORTNUM {
+				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s", e["Event"], _LT, e["Peer"], _LT, e["Address"])
+				NotifyMail(e["WrongPort"], e["Peer"], msg, MAILTO)
+			}
+		}
+		if err != nil {
+			LoggerString(err.Error())
+		}
 	}
 }
 
@@ -575,6 +604,10 @@ func init() {
 	DBPort = conf.Pg.DBPort
 	DBUser = conf.Pg.DBUser
 	DBSSL = conf.Pg.DBSSL
+
+	LENGTHINNERNUM = conf.Numbers.Lengtinnernum
+	LENGTHOUTERNUM = conf.Numbers.Lengtouternum
+	PORTNUM = conf.Numbers.PortNum
 
 	TG = conf.Tg.Rcp
 	TGPATH = conf.Tg.Path
