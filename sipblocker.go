@@ -47,7 +47,8 @@ var (
 	BANQUERYD, BANQUERYDW, BANQUERYI string
 	CALLCHAIN, CALLTABLE, CALLQUERYS string
 	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO, MAIL string
-	LENGTHOUTERNUM, LENGTHINNERNUM, PORTNUM string
+	LENGTHOUTERNUM, LENGTHINNERNUM int
+	PORTNUM string
 
 	unquotedChar  = `[^",\\{}\s(NULL)]`
     	unquotedValue = fmt.Sprintf("(%s)+", unquotedChar)
@@ -229,7 +230,7 @@ func eventHandler(E map[string]string) {
 func PeerStatus(e map[string]string) {
 	LoggerMap(e)
 	num := strings.Split(e["Peer"], "/")
-	if string(len(num[1])) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
+	if len(num[1]) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
 		res := rex.FindStringSubmatch(e["Address"])
 		if res != nil {
