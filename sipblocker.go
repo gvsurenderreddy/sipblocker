@@ -228,7 +228,7 @@ func eventHandler(E map[string]string) {
 
 func PeerStatus(e map[string]string) {
 	num := strings.Split(e["Peer"], "/")
-	if len(num[1] == LENGTHINNERNUM && e["PeerStatus"] == "Registered") {
+	if len(num[1]) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
 		res := rex.FindStringSubmatch(e["Address"])
 		if res != nil {
