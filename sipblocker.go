@@ -232,14 +232,10 @@ func PeerStatus(e map[string]string) {
 	if len(num[1]) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
 		res := rex.FindStringSubmatch(e["Address"])
-		if res != nil {
-			ip := res[1]
-			port := res[2]
-			if port != PORTNUM {
-				LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s ", e["Peer"], e["Address"], port))
-				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s %sPort: %s", "WrongPort", _LT, e["Peer"], _LT, ip, _LT, port)
-				NotifyMail("WrongPort", e["Peer"], msg, MAILTO)
-			}
+		if res != nil && res[2] != PORTNUM {
+			LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s ", e["Peer"], res[1], res[2]))
+			msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s %sPort: %s", "WrongPort", _LT, e["Peer"], _LT, res[1], _LT, res[2])
+			NotifyMail("WrongPort", e["Peer"], msg, MAILTO)
 		}
 		if err != nil {
 			LoggerString(err.Error())
