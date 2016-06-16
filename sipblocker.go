@@ -69,8 +69,8 @@ type Config struct {
 }
 
 type Numbers struct {
-	Lengtinnernum 	string
-	Lengtouternum 	string
+	Lengtinnernum 	int
+	Lengtouternum 	int
 	PortNum		string
 }
 
