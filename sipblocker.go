@@ -237,7 +237,7 @@ func PeerStatus(e map[string]string) {
 			port := res[2]
 			if port != PORTNUM {
 				LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s ", e["Peer"], e["Address"], port))
-				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s %sPort: %s", e["Event"], _LT, e["Peer"], _LT, ip, _LT, port)
+				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s %sPort: %s", "WrongPort", _LT, e["Peer"], _LT, ip, _LT, port)
 				NotifyMail("WrongPort", e["Peer"], msg, MAILTO)
 			}
 		}
