@@ -232,6 +232,7 @@ func PeerStatus(e map[string]string) {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
 		res := rex.FindStringSubmatch(e["Address"])
 		if res != nil {
+			LoggerMap(e)
 			port := res[2]
 			if port != PORTNUM {
 				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s", e["Event"], _LT, e["Peer"], _LT, e["Address"])
