@@ -227,6 +227,7 @@ func eventHandler(E map[string]string) {
 }
 
 func PeerStatus(e map[string]string) {
+	LoggerMap(e)
 	num := strings.Split(e["Peer"], "/")
 	if string(len(num[1])) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
