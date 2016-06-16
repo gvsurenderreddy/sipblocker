@@ -69,8 +69,8 @@ type Config struct {
 }
 
 type Numbers struct {
-	Lengtinnernum 	int
-	Lengtouternum 	int
+	Lengthinnernum 	int
+	Lengthouternum 	int
 	PortNum		string
 }
 
@@ -230,7 +230,7 @@ func eventHandler(E map[string]string) {
 func PeerStatus(e map[string]string) {
 	LoggerMap(e)
 	num := strings.Split(e["Peer"], "/")
-	LoggerString("Num1 " + string(num[1]) + " " + string(len(num[1])) + " " + string(LENGTHINNERNUM))
+	LoggerString("Num1 " + string(num[1]) + " " + len(string(num[1])) + " " + string(LENGTHINNERNUM))
 	if len(num[1]) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
 		LoggerString("Num2 " + num[1] + " PeerStatus " + e["PeerStatus"])
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
@@ -610,8 +610,8 @@ func init() {
 	DBUser = conf.Pg.DBUser
 	DBSSL = conf.Pg.DBSSL
 
-	LENGTHINNERNUM = conf.Numbers.Lengtinnernum
-	LENGTHOUTERNUM = conf.Numbers.Lengtouternum
+	LENGTHINNERNUM = conf.Numbers.Lengthinnernum
+	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
 	PORTNUM = conf.Numbers.PortNum
 
 	TG = conf.Tg.Rcp
