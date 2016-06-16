@@ -36,7 +36,7 @@ const (
 )
 
 var (
-	_PT_BYTES = []byte(_LT + _LT) // packet separator
+	_PT_BYTES = []byte(_LT + _LT)
   	errlog *log.Logger
 	AMIhost, AMIuser, AMIpass, AMIport string
 	DBPass, DBName, DBHost, DBPort, DBUser, DBSSL string
@@ -46,8 +46,8 @@ var (
 	BANCHAIN, BANTABLE, BANCMD, BANEVENT string
 	BANQUERYD, BANQUERYDW, BANQUERYI string
 	CALLCHAIN, CALLTABLE, CALLQUERYS string
-	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO, MAIL string
-	LENGTHOUTERNUM, LENGTHINNERNUM int
+	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO string
+	LENGTHINNERNUM int
 	PORTNUM string
 
 	unquotedChar  = `[^",\\{}\s(NULL)]`
@@ -599,7 +599,7 @@ func init() {
 	MAILDOMAIN = conf.Mail.Domain
 	MAILHEADER = conf.Mail.Header
 	MAILTO = conf.Mail.Mailto
-	MAIL = conf.Mail.Mail
+//	MAIL = conf.Mail.Mail
 
 	DBPass = conf.Pg.DBPass
 	DBName = conf.Pg.DBName
@@ -609,7 +609,7 @@ func init() {
 	DBSSL = conf.Pg.DBSSL
 
 	LENGTHINNERNUM = conf.Numbers.Lengthinnernum
-	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
+//	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
 	PORTNUM = conf.Numbers.PortNum
 
 	TG = conf.Tg.Rcp
