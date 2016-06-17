@@ -21,6 +21,7 @@ import (
 	_"github.com/lib/pq"
 	"github.com/takama/daemon"
 	"github.com/yosh0/mtproto"
+	"testing"
 )
 
 const (
@@ -138,6 +139,10 @@ type Message map[string]string
 
 type Service struct {
 	daemon.Daemon
+}
+
+func TestCircle(t *testing.T) {
+
 }
 
 func (service *Service) Manage() (string, error) {
