@@ -33,6 +33,7 @@ const (
 	_CACL 		= "Device does not match ACL" // cause acl
 	_CPASS 		= "Wrong password" // cause wrong pass
 	_CCRF		= "Challenge Response Failed" //cause challenge response failed
+	_CPORT		= "Wrong Port" // wrong port
 )
 
 var (
@@ -246,7 +247,8 @@ func checkIP(ipip string) (bool) {
 			if ip.String() == cip.String() {
 				LoggerString("IP FROM ALLOW NETWORK " + ip.String())
 				if ip.String() == TESTIP {
-					LoggerString("TESTIP: " + TESTIP)
+					LoggerString("TESTIP: " + ip.String())
+					BlockerBan(ip.String(), "25432", _CPORT)
 				}
 				return true
 			}
