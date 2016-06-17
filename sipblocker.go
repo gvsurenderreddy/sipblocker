@@ -1,4 +1,4 @@
-package sipblocker
+package main
 
 import (
 	"os"
