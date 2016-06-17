@@ -49,6 +49,7 @@ var (
 	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO string
 	LENGTHINNERNUM int
 	PORTNUM string
+	TESTIP	string
 	ALLOWOFFICE []string
 
 	unquotedChar  = `[^",\\{}\s(NULL)]`
@@ -72,6 +73,7 @@ type Config struct {
 
 type Network struct {
 	AllowOffice []string
+	TestIp		string
 }
 
 type Numbers struct {
@@ -227,7 +229,7 @@ func eventHandler(E map[string]string) {
 	case "UserEvent" :
 		UserEvent(E)
 	case "PeerStatus" :
-		PeerStatus(E)
+		PeerStatusWrongPort(E)
 	default :
 
 	}
@@ -243,6 +245,9 @@ func checkIP(ipip string) (bool) {
 		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
 			if ip.String() == cip.String() {
 				LoggerString("IP FROM ALLOW NETWORK " + ip.String())
+				if ip.String() == TESTIP {
+					LoggerString("TESTIP: " + TESTIP)
+				}
 				return true
 			}
 		}
@@ -259,7 +264,7 @@ func inc(ip net.IP) {
 	}
 }
 
-func PeerStatus(e map[string]string) {
+func PeerStatusWrongPort(e map[string]string) {
 	num := strings.Split(e["Peer"], "/")
 	if len(num[1]) == LENGTHINNERNUM && e["PeerStatus"] == "Registered" {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
@@ -644,6 +649,7 @@ func init() {
 //	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
 	PORTNUM = conf.Numbers.PortNum
 
+	TESTIP = conf.Network.TestIp
 	ALLOWOFFICE = conf.Network.AllowOffice
 
 	TG = conf.Tg.Rcp
