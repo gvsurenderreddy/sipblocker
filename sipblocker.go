@@ -145,6 +145,7 @@ func TestCircle(t *testing.T) {
 
 }
 
+
 func (service *Service) Manage() (string, error) {
 	usage := "Usage: myservice install | remove | start | stop | status\n"
 	if len(os.Args) > 1 {
