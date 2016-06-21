@@ -242,7 +242,7 @@ func eventHandler(E map[string]string) {
 	}
 }
 
-func checkIP(ipip string, num string) (bool) {
+func checkIP(ipip string, port string, num string) (bool) {
 	cip := net.ParseIP(ipip)
 	for _, iprange := range ALLOWOFFICE {
 		ip, ipnet, err := net.ParseCIDR(iprange)
@@ -251,7 +251,7 @@ func checkIP(ipip string, num string) (bool) {
 		}
 		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
 			if ip.String() == cip.String() {
-				LoggerString(fmt.Sprintf("IP FROM ALLOW NETWORK %s %s", ip.String(), num))
+				LoggerString(fmt.Sprintf("FROM ALLOWED NET Number: %s IP: %s WrongPort: %s", num, ip.String(), port))
 				if ip.String() == TESTIP {
 					LoggerString("TESTIP: " + ip.String())
 					BlockerBan(ip.String(), num, _CPORT)
@@ -281,7 +281,7 @@ func PeerStatusWrongPort(e map[string]string) {
 		rex, err := regexp.Compile(`^(\S*)\:(\S*)$`)
 		res := rex.FindStringSubmatch(e["Address"])
 		if res != nil && res[2] != PORTNUM {
-			if checkIP(res[1], num[1]) == true {
+			if checkIP(res[1], res[2], num[1]) == true {
 
 			} else {
 				LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s", e["Peer"], res[1], res[2]))
