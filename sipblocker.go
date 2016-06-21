@@ -251,7 +251,7 @@ func checkIP(ipip string, num string) (bool) {
 		}
 		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
 			if ip.String() == cip.String() {
-				LoggerString("IP FROM ALLOW NETWORK " + ip.String())
+				LoggerString(fmt.Sprintf("IP FROM ALLOW NETWORK %s %s", ip.String(), num))
 				if ip.String() == TESTIP {
 					LoggerString("TESTIP: " + ip.String())
 					BlockerBan(ip.String(), num, _CPORT)
@@ -284,7 +284,7 @@ func PeerStatusWrongPort(e map[string]string) {
 			if checkIP(res[1], num[1]) == true {
 
 			} else {
-				LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s ", e["Peer"], res[1], res[2]))
+				LoggerString(fmt.Sprintf("Number: %s IP: %s WrongPort: %s", e["Peer"], res[1], res[2]))
 //				msg := fmt.Sprintf("%s %sNumber: %s %sAddress: %s %sPort: %s", "WrongPort", _LT, e["Peer"], _LT, res[1], _LT, res[2])
 //				NotifyMail("WrongPort", e["Peer"], msg, MAILTO)
 			}
