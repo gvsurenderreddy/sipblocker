@@ -344,8 +344,12 @@ func InvalidPassword(e map[string]string) {
 func ChallengeResponseFailed(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
-	msg := fmt.Sprintf("%s %s Number1: %s %s Number2: %s %s IP Address: %s",
-		e["Event"], _LT, e["AccountID"], _LT, e["ExpectedResponse"], _LT, raddr)
+	msg := fmt.Sprintf("%s %s AccountID: %s %s ExpectedResponse: %s %s Response: %s %s IP Address: %s",
+		e["Event"], _LT,
+		e["AccountID"], _LT,
+		e["ExpectedResponse"], _LT,
+		e["Response"], _LT,
+		raddr)
 	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CCRF)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
