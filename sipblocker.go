@@ -40,7 +40,7 @@ var (
 	_PT_BYTES = []byte(_LT + _LT)
   	errlog *log.Logger
 	AMIhost, AMIuser, AMIpass, AMIport string
-	DBPass, DBName, DBHost, DBPort, DBUser, DBSSL string
+	DBPass, DBName, DBHost, DBPort, DBUser, DBSSL, DBType string
 	LOGPATH = ""
 	TG []string
 	TGPATH string
@@ -62,7 +62,7 @@ var (
 )
 
 type Config struct {
-	Pg Pg
+	DB DB
 	Tg Tg
 	Ban Ban
 	Mail Mail
@@ -88,21 +88,21 @@ type LogDir struct {
 }
 
 type Ban struct {
-	BanChain string
-	BanTable string
-	BanQueryD string
-	BanQueryDW string
-	BanQueryI string
-	CallChain string
-	CallTable string
-	CallQueryS string
-	Command string
-	Event string
+	BanChain	string
+	BanTable	string
+	BanQueryD	string
+	BanQueryDW	string
+	BanQueryI	string
+	CallChain	string
+	CallTable	string
+	CallQueryS	string
+	Command		string
+	Event		string
 }
 
 type Tg struct {
-	Rcp []string
-	Path string
+	Rcp	[]string
+	Path	string
 }
 
 type SIPBlockerAmi struct {
@@ -112,13 +112,14 @@ type SIPBlockerAmi struct {
 	Password   string
 }
 
-type Pg struct {
-	DBPort string
-	DBHost string
-	DBUser string
-	DBPass string
-	DBName string
-	DBSSL string
+type DB struct {
+	Port	string
+	Host	string
+	User	string
+	Pass	string
+	Name	string
+	SSL	string
+	Type	string
 }
 
 type Mail struct {
@@ -307,7 +308,11 @@ func FailedACL(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s %sACL Name: %s %sProto: %s",
-		e["Event"], _LT, e["AccountID"], _LT, raddr, _LT, e["ACLName"], _LT, e["Service"])
+		e["Event"], _LT,
+		e["AccountID"], _LT,
+		raddr, _LT,
+		e["ACLName"], _LT,
+		e["Service"])
 	BlockerBan(raddr, e["AccountID"], _CACL)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 }
@@ -316,7 +321,9 @@ func InvalidAccountID(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
-		e["Event"], _LT, e["AccountID"], _LT, raddr)
+		e["Event"], _LT,
+		e["AccountID"], _LT,
+		raddr)
 	NotifyTG(msg)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 }
@@ -325,7 +332,9 @@ func UnexpectedAddress(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
-		e["Event"], _LT, e["AccountID"], _LT, raddr)
+		e["Event"], _LT,
+		e["AccountID"], _LT,
+		raddr)
 	NotifyTG(msg)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
 }
@@ -334,7 +343,9 @@ func InvalidPassword(e map[string]string) {
 	LoggerMap(e)
 	raddr := RAddrGet(e["RemoteAddress"])
 	msg := fmt.Sprintf("%s %sNumber: %s %sIP Address: %s",
-		e["Event"], _LT, e["AccountID"], _LT, raddr)
+		e["Event"], _LT,
+		e["AccountID"], _LT,
+		raddr)
 	BlockerBan(raddr, e["AccountID"], _CPASS)
 	NotifyTG(msg)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
@@ -525,7 +536,7 @@ func NotifyTG(tg_msg string) {
 func sqlPut(query string) {
 	dbinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		DBHost, DBPort, DBUser, DBPass, DBName, DBSSL)
-	db, err := sql.Open("postgres", dbinfo)
+	db, err := sql.Open(DBType, dbinfo)
 	err = db.Ping()
 	if (err != nil) {
 		LoggerString(err.Error())
@@ -543,7 +554,7 @@ func sqlPut(query string) {
 func sqlGetArray(query string) []string {
 	dbinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		DBHost, DBPort, DBUser, DBPass, DBName, DBSSL)
-	db, err := sql.Open("postgres", dbinfo)
+	db, err := sql.Open(DBType, dbinfo)
 	rows, err := db.Query(query)
 	if (err != nil) {
 		LoggerErr(err)
@@ -555,7 +566,7 @@ func sqlGetArray(query string) []string {
 	var el []string
 	for rows.Next() {
 		rows.Scan(&arr)
-		VAR := pgArrayToSlice(arr) //var for single field query output
+		VAR := ArrayToSlice(arr) //var for single field query output
 		el = append(el, VAR...)
 	}
 	if (len(el) < 1) {
@@ -565,7 +576,7 @@ func sqlGetArray(query string) []string {
 	return el
 }
 
-func pgArrayToSlice(array string) []string {
+func ArrayToSlice(array string) []string {
     var valueIndex int
     results := make([]string, 0)
     matches := arrayExp.FindAllStringSubmatch(array, -1)
@@ -645,14 +656,14 @@ func init() {
 	MAILDOMAIN = conf.Mail.Domain
 	MAILHEADER = conf.Mail.Header
 	MAILTO = conf.Mail.Mailto
-//	MAIL = conf.Mail.Mail
 
-	DBPass = conf.Pg.DBPass
-	DBName = conf.Pg.DBName
-	DBHost = conf.Pg.DBHost
-	DBPort = conf.Pg.DBPort
-	DBUser = conf.Pg.DBUser
-	DBSSL = conf.Pg.DBSSL
+	DBPass = conf.DB.Pass
+	DBName = conf.DB.Name
+	DBHost = conf.DB.Host
+	DBPort = conf.DB.Port
+	DBUser = conf.DB.User
+	DBSSL = conf.DB.SSL
+	DBType = conf.DB.Type
 
 	LENGTHINNERNUM = conf.Numbers.Lengthinnernum
 //	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
