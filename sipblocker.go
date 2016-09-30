@@ -48,7 +48,7 @@ var (
 	BANQUERYD, BANQUERYDW, BANQUERYI string
 	CALLCHAIN, CALLTABLE, CALLQUERYS string
 	MAILSERVER, MAILPORT, MAILDOMAIN, MAILHEADER, MAILTO string
-	LENGTHINNERNUM int
+	LENGTHINNERNUM, LENGTHOUTERNUM int
 	PORTNUM string
 	TESTIP	string
 	ALLOWOFFICE []string
@@ -666,7 +666,7 @@ func init() {
 	DBType = conf.DB.Type
 
 	LENGTHINNERNUM = conf.Numbers.Lengthinnernum
-//	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
+	LENGTHOUTERNUM = conf.Numbers.Lengthouternum
 	PORTNUM = conf.Numbers.PortNum
 
 	TESTIP = conf.Network.TestIp
