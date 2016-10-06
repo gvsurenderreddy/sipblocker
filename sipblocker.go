@@ -715,7 +715,7 @@ func LifeTime(s int64) string {
 	hs := strconv.FormatInt(hour, 10)
 	ms := strconv.FormatInt(min, 10)
 	ss := strconv.FormatInt(sec, 10)
-	r := fmt.Sprintf("%s Days, %02s Hrs, %02s Mins %02s Sec", ds, hs, ms, ss)
+	r := fmt.Sprintf("%s Days %02s:%02s:%02s", ds, hs, ms, ss)
 	return r
 }
 
