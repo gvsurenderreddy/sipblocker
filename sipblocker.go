@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 	"bufio"
 	"bytes"
 	"regexp"
@@ -27,13 +28,14 @@ const (
   	_DN  		= "sipblocker"
   	_DD  		= "Phreakers blocker"
 	_LT		= "\x0D\x0A"
-	_KVT 		= ":"               // header value separator
-	_READ_BUF     	= 512               // buffer size for socket reader
-	_CMD_END      	= "--END COMMAND--" // Asterisk command data end
-	_CACL 		= "Device does not match ACL" // cause acl
-	_CPASS 		= "Wrong password" // cause wrong pass
-	_CCRF		= "Challenge Response Failed" //cause challenge response failed
-	_CPORT		= "Wrong Port" // wrong port
+	_KVT 		= ":"
+	_READ_BUF     	= 512
+	_CMD_END      	= "--END COMMAND--"
+	_CACL 		= "Device does not match ACL"
+	_CPASS 		= "Wrong password"
+	_CCRF		= "Challenge Response Failed"
+	_CPORT		= "Wrong Port"
+	_AC		= 7200 * time.Second
 )
 
 var (
@@ -59,6 +61,7 @@ var (
     	quotedValue =	fmt.Sprintf("\"(%s)*\"", quotedChar)
 	arrayValue =	fmt.Sprintf("(?P<value>(%s|%s))", unquotedValue, quotedValue)
 	arrayExp =	regexp.MustCompile(fmt.Sprintf("((%s)(,)?)", arrayValue))
+	ST = time.Now().Unix()
 )
 
 type Config struct {
@@ -160,6 +163,7 @@ func (service *Service) Manage() (string, error) {
 	    		return usage, nil
 		}
     	}
+	go forever()
 	eventGet()
     	return usage, nil
 }
@@ -691,6 +695,28 @@ func main() {
 		os.Exit(1)
     	}
     	fmt.Println(status)
+}
+
+func forever() {
+	for {
+		lt := LifeTime(time.Now().Unix())
+		NotifyTG(fmt.Sprintf("%s %s", _DD, lt))
+		time.Sleep(_AC)
+	}
+}
+
+func LifeTime(s int64) string {
+	diff := (s - ST)
+	day := (diff/86400)
+	hour := (diff/3600)
+	min := (diff%3600)/60
+	sec := (diff%3600)%60
+	ds := strconv.FormatInt(day, 10)
+	hs := strconv.FormatInt(hour, 10)
+	ms := strconv.FormatInt(min, 10)
+	ss := strconv.FormatInt(sec, 10)
+	r := fmt.Sprintf("%s Days, %02s Hrs, %02s Mins %02s Sec", ds, hs, ms, ss)
+	return r
 }
 
 func LoggerString(s string) {
