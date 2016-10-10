@@ -707,8 +707,8 @@ func forever() {
 
 func LifeTime(s int64) string {
 	diff := (s - ST)
-	day := (diff/86400)
-	hour := (diff/3600)
+	day := (diff/86400)%3600
+	hour := (diff%86400)/3600
 	min := (diff%3600)/60
 	sec := (diff%3600)%60
 	ds := strconv.FormatInt(day, 10)
