@@ -700,7 +700,7 @@ func main() {
 func forever() {
 	for {
 		lt := LifeTime(time.Now().Unix())
-		NotifyTG(fmt.Sprintf("%s %s", _DD, lt))
+		NotifyTG(fmt.Sprintf("%s %s %s", _DD, _LT, lt))
 		time.Sleep(_AC)
 	}
 }
