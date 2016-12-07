@@ -702,6 +702,7 @@ func forever() {
 		lt := LifeTime(time.Now().Unix())
 		NotifyTG(fmt.Sprintf("%s %s %s", _DD, _LT, lt))
 		time.Sleep(_AC)
+
 	}
 }
 
