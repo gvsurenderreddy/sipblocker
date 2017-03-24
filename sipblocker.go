@@ -236,8 +236,6 @@ func eventHandler(E map[string]string) {
 		UserEvent(E)
 	case "PeerStatus" :
 		PeerStatusWrongPort(E)
-	case "SuccessfulAuth" :
-		SuccessfulAuth(E)
 	default :
 
 	}
