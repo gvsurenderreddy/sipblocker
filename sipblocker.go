@@ -236,6 +236,8 @@ func eventHandler(E map[string]string) {
 		UserEvent(E)
 	case "PeerStatus" :
 		PeerStatusWrongPort(E)
+	case "SuccessfulAuth" :
+		SuccessfulAuth(E)
 	default :
 
 	}
@@ -368,6 +370,10 @@ func ChallengeResponseFailed(e map[string]string) {
 	NotifyTG(msg)
 	BlockerBan(raddr, e["AccountID"], _CCRF)
 	NotifyMail(e["Event"], e["AccountID"], msg, MAILTO)
+}
+
+func SuccessfulAuth(e map[string]string) {
+	LoggerMap(e)
 }
 
 func RequestBadFormat(e map[string]string) {
@@ -700,9 +706,8 @@ func main() {
 func forever() {
 	for {
 		lt := LifeTime(time.Now().Unix())
-		NotifyTG(fmt.Sprintf("%s %s %s", _DD, _LT, lt))
+		NotifyTG(fmt.Sprintf("%s%s%s", _DD, _LT, lt))
 		time.Sleep(_AC)
-
 	}
 }
 
